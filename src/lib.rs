@@ -186,6 +186,27 @@ impl Growable {
     /// only if there is not enough space in this Growable
     /// or the pointer alignment is invalid.
     /// Additionally stores meta pointer to the vtable creating trait object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use growable::*;
+    ///   trait Answerer {
+    ///
+    ///       fn get_answer(&self) -> u32;
+    ///   }
+    ///
+    ///   struct Foo;
+    ///
+    ///   impl Answerer for Foo {
+    ///
+    ///       fn get_answer(&self) -> u32 { 42 }
+    ///   }
+    ///
+    ///   let growable = Growable::new();
+    ///   let foo: Reusable<Answerer> = growable.assign_as_trait(Foo);
+    ///   assert_eq!(foo.get_answer(), 42);
+    /// ```
     pub fn assign_as_trait<T, U>(mut self, t: T) -> Reusable<U> where T: Unsize<U> + 'static, U: ?Sized + 'static {
         let result = self.assign_into(&t as &U, mem::align_of::<T>(), mem::size_of::<T>());
         mem::forget(t);

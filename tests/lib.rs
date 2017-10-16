@@ -24,33 +24,36 @@ extern crate growable;
 
 use growable::*;
 
+/// Some sample trait.
 trait Trait {
 
-    fn get(&self) -> usize;
+    fn get(&self) -> u32;
 }
 
+/// Some basic trait implementor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct StandardType(usize);
+struct StandardType(u32);
 
 impl Trait for StandardType {
 
-    fn get(&self) -> usize {
+    fn get(&self) -> u32 {
         self.0
     }
 }
 
+/// Zero-sized trait implementor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ZST;
 
 impl Trait for ZST {
 
-    fn get(&self) -> usize {
+    fn get(&self) -> u32 {
         42
     }
 }
 
 #[test]
-pub fn access() {
+fn access() {
     let buffer = Growable::new();
     let v = buffer.assign_as_trait::<_, [u8]>([1, 2, 3, 4, 5, 6]);
     assert_eq!(v.len(), 6);
@@ -66,7 +69,7 @@ pub fn access() {
 }
 
 #[test]
-pub fn assign_as_trait() {
+fn assign_as_trait() {
     let buffer = Growable::new();
     let v = buffer.assign_as_trait::<_, Trait>(StandardType(24));
     assert_eq!(v.get(), 24);
@@ -76,7 +79,7 @@ pub fn assign_as_trait() {
 }
 
 #[test]
-pub fn access_zst() {
+fn access_zst() {
     let buffer = Growable::new();
     let v: Reusable<Trait> = buffer.assign_as_trait(ZST);
     assert_eq!(v.get(), 42);
@@ -91,21 +94,26 @@ pub fn access_zst() {
     assert_eq!(v.get(), 42);
 }
 
+
 #[test]
-pub fn drop() {
-    let counter = ::std::rc::Rc::new(::std::cell::Cell::new(0usize));
-    trait Test {}
-    struct Foo(::std::rc::Rc<::std::cell::Cell<usize>>);
-    impl Test for Foo {};
+fn drop() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+    let drop_counter = Rc::new(Cell::new(0));
+    trait Droppable {}
+    struct Foo(Rc<Cell<usize>>);
+    impl Droppable for Foo {};
     impl Drop for Foo {
         fn drop(&mut self) { self.0.set(self.0.get() + 1); }
     }
     {
         let buffer = Growable::new();
-        let _: Reusable<Test> = buffer.assign_as_trait(Foo(counter.to_owned()));
+        // Dropped by leaving the current scope:
+        let _: Reusable<Droppable> = buffer.assign_as_trait(Foo(drop_counter.clone()));
         let buffer = Growable::new();
-        let v: Reusable<Test> = buffer.assign_as_trait(Foo(counter.to_owned()));
+        let v: Reusable<Droppable> = buffer.assign_as_trait(Foo(drop_counter.clone()));
+        // Dropped manually:
         v.free();
     }
-    assert_eq!(counter.as_ref().get(), 2);
+    assert_eq!(drop_counter.get(), 2);
 }
