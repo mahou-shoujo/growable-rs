@@ -94,7 +94,6 @@ fn access_zst() {
     assert_eq!(v.get(), 42);
 }
 
-
 #[test]
 fn drop() {
     use std::cell::Cell;

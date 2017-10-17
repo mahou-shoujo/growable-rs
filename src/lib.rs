@@ -254,7 +254,8 @@ impl Growable {
     }
 
     fn assign_into<T>(&mut self, t: &T, ptr_alignment: usize, len: usize) -> Reusable<T> where T: ?Sized + 'static {
-        self.grow(next_highest_power_of_2(len), ptr_alignment);
+        let len = next_highest_power_of_2(len);
+        self.grow(len, ptr_alignment);
         if let &mut Growable::Some { len, mut ptr, .. } = self {
             unsafe {
                 let mut t = t as *const T as *mut T;
@@ -337,7 +338,7 @@ impl<T> Reusable<T> where T: ?Sized {
 #[inline]
 fn next_highest_power_of_2(mut num: usize) -> usize {
     if 0 == num {
-        return 0;
+        return 1;
     }
     num -= 1;
     num |= num >> 0x01;
@@ -359,7 +360,7 @@ mod tests {
 
     #[test]
     fn test_next_highest_power_of_2() {
-        assert_eq!(next_highest_power_of_2(0), 0);
+        assert_eq!(next_highest_power_of_2(0), 1);
         assert_eq!(next_highest_power_of_2(1), 1);
         assert_eq!(next_highest_power_of_2(2), 2);
         assert_eq!(next_highest_power_of_2(3), 4);
