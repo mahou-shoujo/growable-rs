@@ -10,7 +10,7 @@ readme = "README.md"
 documentation = "https://mahou-shoujo.github.io/growable-rs/growable/index.html"
 
 [dependencies]
-lifeguard = { version = "^0.5", optional = true }
+lifeguard = { version = "~0.5.2", optional = true }
 
 [features]
 default = []
