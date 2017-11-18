@@ -15,3 +15,7 @@ features = ["use_lifeguard"] # Optional built-in support for Lifeguard crate.
 #### Nighty only!
 Note that this crate uses a lot of ground-breaking features of Rust and therefore
 is only available on current Nighty build.
+#### Caveats
+* Array allocations are not handled properly yet which means that any allocation
+  is performed as for a singular object and probably will be denied by
+  an underlying allocator if too big allocation is requested.
