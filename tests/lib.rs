@@ -22,6 +22,7 @@
 
 extern crate growable;
 
+use std::mem::size_of;
 use growable::*;
 
 /// Some sample trait.
@@ -56,24 +57,31 @@ impl Trait for ZST {
 fn access() {
     let buffer = Growable::new();
     let v = buffer.assign_as_trait::<_, [u8]>([1, 2, 3, 4, 5, 6]);
-    assert_eq!(v.len(), 6);
+    assert_eq!(  v.len(), 6);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6]);
     let buffer = v.free();
     let v = buffer.assign_as_trait::<_, [u8]>([1, 2, 3, 4]);
-    assert_eq!(v.len(), 4);
+    assert_eq!(  v.len(), 4);
     assert_eq!(&*v, &[1, 2, 3, 4]);
     let buffer = v.free();
     let v = buffer.assign_as_trait::<_, [u8]>([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    assert_eq!(v.len(), 9);
+    assert_eq!(  v.len(), 9);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let buffer = v.free();
 }
 
 #[test]
 fn assign_as_trait() {
     let buffer = Growable::new();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+    assert_eq!(buffer.ptr_alignment(), None);
     let v = buffer.assign_as_trait::<_, Trait>(StandardType(24));
     assert_eq!(v.get(), 24);
     let buffer = v.free();
+    assert!( ! buffer.is_empty());
+    assert_eq!(buffer.len(), size_of::<StandardType>());
+    assert_eq!(buffer.ptr_alignment(), Some(4));
     let v = buffer.assign_as_trait::<_, Trait>(StandardType(48));
     assert_eq!(v.get(), 48);
 }
@@ -81,17 +89,45 @@ fn assign_as_trait() {
 #[test]
 fn access_zst() {
     let buffer = Growable::new();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+    let v = buffer.assign(ZST);
+    assert_eq!(v.get(), 42);
+    let buffer = v.free();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+    let v = buffer.assign(ZST);
+    assert_eq!(v.get(), 42);
+    let buffer = v.free();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+}
+
+#[test]
+fn access_zst_as_trait() {
+    let buffer = Growable::new();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+    let v: Reusable<Trait> = buffer.assign(ZST);
+    assert_eq!(v.get(), 42);
+    let buffer = v.free();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+    let v: Reusable<Trait> = buffer.assign(ZST);
+    assert_eq!(v.get(), 42);
+    let buffer = v.free();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.assign_as_trait(ZST);
     assert_eq!(v.get(), 42);
     let buffer = v.free();
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.assign_as_trait(ZST);
     assert_eq!(v.get(), 42);
     let buffer = v.free();
-    let v: Reusable<ZST> = buffer.assign(ZST);
-    assert_eq!(v.get(), 42);
-    let buffer = v.free();
-    let v: Reusable<ZST> = buffer.assign(ZST);
-    assert_eq!(v.get(), 42);
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
 }
 
 #[test]
@@ -108,11 +144,23 @@ fn drop() {
     {
         let buffer = Growable::new();
         // Dropped by leaving the current scope:
-        let _: Reusable<Droppable> = buffer.assign_as_trait(Foo(drop_counter.clone()));
+        let _: Reusable<Droppable> = buffer.assign_as_trait(Foo(Rc::clone(&drop_counter)));
         let buffer = Growable::new();
-        let v: Reusable<Droppable> = buffer.assign_as_trait(Foo(drop_counter.clone()));
+        let v: Reusable<Droppable> = buffer.assign_as_trait(Foo(Rc::clone(&drop_counter)));
         // Dropped manually:
         v.free();
     }
     assert_eq!(drop_counter.get(), 2);
+}
+
+#[test]
+fn with_capacity() {
+    let buffer = Growable::with_capacity(0, 1);
+    assert!(   buffer.is_empty());
+    assert_eq!(buffer.len(), 0);
+    assert_eq!(buffer.ptr_alignment(), Some(0));
+    let buffer = Growable::with_capacity(1, 2);
+    assert!( ! buffer.is_empty());
+    assert_eq!(buffer.len(), 1);
+    assert_eq!(buffer.ptr_alignment(), Some(1));
 }

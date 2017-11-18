@@ -30,7 +30,13 @@
 //! Note that this crate uses a lot of ground-breaking features of Rust and therefore
 //! is only available on current Nighty build.
 
-#![warn(missing_docs)]
+#![
+    deny(
+        missing_docs,
+        missing_copy_implementations, missing_debug_implementations,
+        trivial_numeric_casts, unused_qualifications, unused_import_braces
+    )
+]
 #![feature(allocator_api, alloc, coerce_unsized, unsize, unique)]
 
 #[cfg(feature="use_lifeguard")] extern crate lifeguard;
@@ -140,7 +146,9 @@ impl Drop for Growable {
         match self {
             &mut Growable::Some { len, ptr_alignment, ref mut ptr } => {
                 unsafe {
-                    Heap.dealloc(ptr.as_mut(), Layout::from_size_align_unchecked(len, ptr_alignment));
+                    if len != 0 {
+                        Heap.dealloc(ptr.as_mut(), Layout::from_size_align_unchecked(len, ptr_alignment));
+                    }
                 }
             },
             &mut Growable::None => ()
@@ -155,9 +163,17 @@ impl Growable {
         Growable::None
     }
 
-    /// Returns a new instance of Growable and allocates memory on the heap.
-    /// In stable Rust it is possible to get a required
-    /// pointer alignment for any type with [align_of](https://doc.rust-lang.org/std/mem/fn.align_of.html) function.
+    /// Returns a new instance of Growable with memory already allocated on the heap suitable to
+    /// store an instance of a given type T.
+    pub fn with_capacity_for<T>() -> Self {
+        Self::with_capacity(mem::size_of::<T>(), mem::align_of::<T>())
+    }
+
+    /// Returns a new instance of Growable with memory already allocated on the heap.
+    /// In stable Rust it is possible to get a required pointer alignment
+    /// for any type with [`align_of`] function.
+    ///
+    /// [`align_of`]: https://doc.rust-lang.org/std/mem/fn.align_of.html
     pub fn with_capacity(len: usize, ptr_alignment: usize) -> Self {
         let mut temp = Self::new();
         temp.grow(len, ptr_alignment);
@@ -172,9 +188,19 @@ impl Growable {
         }
     }
 
+    /// Returns true if no memory has been allocated yet.
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Returns an alignment of an underlying memory pointer if any.
+    pub fn ptr_alignment(&self) -> Option<usize> {
+        match self {
+            &Growable::Some { len, .. } => Some(len),
+            &Growable::None => None
+        }
+    }
+
     /// Returns allocated on the heap struct, an actual (re)allocation will be performed
-    /// only if there is not enough space in this Growable
-    /// or the pointer alignment is invalid.
+    /// only if there is not enough space or the pointer alignment is invalid.
     pub fn assign<T>(mut self, t: T) -> Reusable<T> where T: 'static {
         let result = self.assign_into(&t as &T, mem::align_of::<T>(), mem::size_of::<T>());
         mem::forget(t);
@@ -183,9 +209,8 @@ impl Growable {
     }
 
     /// Returns allocated on the heap struct, an actual (re)allocation will be performed
-    /// only if there is not enough space in this Growable
-    /// or the pointer alignment is invalid.
-    /// Additionally stores meta pointer to the vtable creating trait object.
+    /// only if there is not enough space or the pointer alignment is invalid.
+    /// Additionally stores a pointer to the vtable creating trait object.
     ///
     /// # Examples
     ///
@@ -216,13 +241,27 @@ impl Growable {
 
     fn grow(&mut self, len: usize, ptr_alignment: usize) {
         match self {
-            &mut Growable::Some { len: ref mut curr_len, ptr_alignment: ref mut curr_ptr_alignment, ref mut ptr } if *curr_len < len || *curr_ptr_alignment < ptr_alignment => {
+            &mut Growable::Some { len: ref mut curr_len,
+                                  ptr_alignment: ref mut curr_ptr_alignment,
+                                  ref mut ptr } if *curr_len < len || *curr_ptr_alignment < ptr_alignment => {
                 let len = cmp::max(*curr_len, len);
                 unsafe {
+                    if len == 0 {
+                        unreachable!("
+                            A reallocation request has been detected for a zero-sized type
+                            which should not be possible but here we are. It would
+                            be most appreciated if you could create a new issue describing
+                            a way to reproduce this behavior on a project's GitHub page:
+
+                            https://github.com/mahou-shoujo/growable-rs");
+                    }
                     let layout_curr = Layout::from_size_align_unchecked(*curr_len, ptr_alignment);
                     let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
                     *ptr = match Heap.realloc(ptr.as_mut(), layout_curr, layout) {
-                         Ok(ptr) => Unique::new_unchecked(ptr),
+                         Ok(ptr) => {
+                            if ! ptr.is_null() { Unique::new_unchecked(ptr) }
+                            else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
+                        },
                         Err(err) => {
                             if err.is_memory_exhausted() { Heap.oom(err) }
                             else { panic!("got an unexpected failure on a allocation attempt: {:?}", err); }
@@ -235,13 +274,20 @@ impl Growable {
             &mut Growable::Some { .. } => (),
             &mut Growable::None => {
                 unsafe {
-                    let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
-                    let ptr = match Heap.alloc(layout) {
-                         Ok(ptr) => Unique::new_unchecked(ptr),
-                        Err(err) => {
-                            if err.is_memory_exhausted() { Heap.oom(err) }
+                    let ptr = if len != 0 {
+                        let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
+                        match Heap.alloc(layout) {
+                             Ok(ptr) => {
+                                if ! ptr.is_null() { Unique::new_unchecked(ptr) }
+                                else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
+                            },
+                            Err(err) => {
+                                if err.is_memory_exhausted() { Heap.oom(err) }
                                 else { panic!("got an unexpected failure on a allocation attempt: {:?}", err); }
+                            }
                         }
+                    } else {
+                        Unique::empty()
                     };
                     *self = Growable::Some {
                         len,
@@ -303,6 +349,14 @@ impl<T> ops::DerefMut for Reusable<T> where T: ?Sized {
     }
 }
 
+impl<T> fmt::Debug for Reusable<T> where T: ?Sized + fmt::Debug {
+
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let t: &T = &*self;
+        fmt::Debug::fmt(t, formatter)
+    }
+}
+
 impl<T> Drop for Reusable<T> where T: ?Sized {
 
     fn drop(&mut self) {
@@ -338,7 +392,7 @@ impl<T> Reusable<T> where T: ?Sized {
 #[inline]
 fn next_highest_power_of_2(mut num: usize) -> usize {
     if 0 == num {
-        return 1;
+        return 0;
     }
     num -= 1;
     num |= num >> 0x01;
@@ -360,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_next_highest_power_of_2() {
-        assert_eq!(next_highest_power_of_2(0), 1);
+        assert_eq!(next_highest_power_of_2(0), 0);
         assert_eq!(next_highest_power_of_2(1), 1);
         assert_eq!(next_highest_power_of_2(2), 2);
         assert_eq!(next_highest_power_of_2(3), 4);
