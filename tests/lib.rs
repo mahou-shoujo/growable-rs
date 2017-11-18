@@ -67,7 +67,6 @@ fn access() {
     let v = buffer.assign_as_trait::<_, [u8]>([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     assert_eq!(  v.len(), 9);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    let buffer = v.free();
 }
 
 #[test]
