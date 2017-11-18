@@ -29,7 +29,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'>Enum Growable</p><div class="block items"><ul><li><a href="#variants">Variants</a></li><li><a href="#methods">Methods</a></li><li><a href="#implementations">Trait Implementations</a></li></ul></div><p class='location'><a href='index.html'>growable</a></p><script>window.sidebarCurrent = {name: 'Growable', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+        <p class='location'>Enum Growable</p><div class="block items"><a class="sidebar-title" href="#variants">Variants</a><div class="sidebar-links"><a href="#variant.Some">Some</a><a href="#variant.None">None</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.new">new</a><a href="#method.with_capacity_for">with_capacity_for</a><a href="#method.with_capacity">with_capacity</a><a href="#method.len">len</a><a href="#method.is_empty">is_empty</a><a href="#method.ptr_alignment">ptr_alignment</a><a href="#method.assign">assign</a><a href="#method.assign_as_trait">assign_as_trait</a></div><a class="sidebar-title" href="#implementations">Trait Implementations</a><div class="sidebar-links"><a href="#impl-Clone">Clone</a><a href="#impl-Debug">Debug</a><a href="#impl-Drop">Drop</a></div></div><p class='location'><a href='index.html'>growable</a></p><script>window.sidebarCurrent = {name: 'Growable', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -48,7 +48,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../src/growable/lib.rs.html#93-105' title='goto source code'>[src]</a></span></h1>
+               </span><a class='srclink' href='../src/growable/lib.rs.html#99-111' title='goto source code'>[src]</a></span></h1>
 <pre class='rust enum'>pub enum Growable {
     Some {
         len: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
@@ -93,24 +93,29 @@ Then it could be assigned to some data again and so on.</p>
                     <h2 id='methods' class='small-section-header'>
                       Methods<a href='#methods' class='anchor'></a>
                     </h2>
-                <h3 id='impl' class='impl'><span class='in-band'><code>impl <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#151-274' title='goto source code'>[src]</a></span></h3>
-<div class='impl-items'><h4 id='method.new' class="method"><span id='new.v' class='invisible'><code>pub fn <a href='#method.new' class='fnname'>new</a>() -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#154-156' title='goto source code'>[src]</a></span></h4>
+                <h3 id='impl' class='impl'><span class='in-band'><code>impl <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#159-321' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class="method"><span id='new.v' class='invisible'><code>pub fn <a href='#method.new' class='fnname'>new</a>() -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#162-164' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Returns a new instance of Growable but does not allocate any memory on the heap yet.</p>
-</div><h4 id='method.with_capacity' class="method"><span id='with_capacity.v' class='invisible'><code>pub fn <a href='#method.with_capacity' class='fnname'>with_capacity</a>(len: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, ptr_alignment: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#161-165' title='goto source code'>[src]</a></span></h4>
-<div class='docblock'><p>Returns a new instance of Growable and allocates memory on the heap.
-In stable Rust it is possible to get a required
-pointer alignment for any type with <a href="https://doc.rust-lang.org/std/mem/fn.align_of.html">align_of</a> function.</p>
-</div><h4 id='method.len' class="method"><span id='len.v' class='invisible'><code>pub fn <a href='#method.len' class='fnname'>len</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#168-173' title='goto source code'>[src]</a></span></h4>
+</div><h4 id='method.with_capacity_for' class="method"><span id='with_capacity_for.v' class='invisible'><code>pub fn <a href='#method.with_capacity_for' class='fnname'>with_capacity_for</a>&lt;T&gt;() -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#168-170' title='goto source code'>[src]</a></span></h4>
+<div class='docblock'><p>Returns a new instance of Growable with memory already allocated on the heap suitable to
+store an instance of a given type T.</p>
+</div><h4 id='method.with_capacity' class="method"><span id='with_capacity.v' class='invisible'><code>pub fn <a href='#method.with_capacity' class='fnname'>with_capacity</a>(len: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, ptr_alignment: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#177-181' title='goto source code'>[src]</a></span></h4>
+<div class='docblock'><p>Returns a new instance of Growable with memory already allocated on the heap.
+In stable Rust it is possible to get a required pointer alignment
+for any type with <a href="https://doc.rust-lang.org/std/mem/fn.align_of.html"><code>align_of</code></a> function.</p>
+</div><h4 id='method.len' class="method"><span id='len.v' class='invisible'><code>pub fn <a href='#method.len' class='fnname'>len</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#184-189' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Returns the amount of memory allocated by this Growable.</p>
-</div><h4 id='method.assign' class="method"><span id='assign.v' class='invisible'><code>pub fn <a href='#method.assign' class='fnname'>assign</a>&lt;T&gt;(self, t: T) -&gt; <a class="struct" href="../growable/struct.Reusable.html" title="struct growable::Reusable">Reusable</a>&lt;T&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#178-183' title='goto source code'>[src]</a></span></h4>
+</div><h4 id='method.is_empty' class="method"><span id='is_empty.v' class='invisible'><code>pub fn <a href='#method.is_empty' class='fnname'>is_empty</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#192' title='goto source code'>[src]</a></span></h4>
+<div class='docblock'><p>Returns true if no memory has been allocated yet.</p>
+</div><h4 id='method.ptr_alignment' class="method"><span id='ptr_alignment.v' class='invisible'><code>pub fn <a href='#method.ptr_alignment' class='fnname'>ptr_alignment</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#195-200' title='goto source code'>[src]</a></span></h4>
+<div class='docblock'><p>Returns an alignment of an underlying memory pointer if any.</p>
+</div><h4 id='method.assign' class="method"><span id='assign.v' class='invisible'><code>pub fn <a href='#method.assign' class='fnname'>assign</a>&lt;T&gt;(self, t: T) -&gt; <a class="struct" href="../growable/struct.Reusable.html" title="struct growable::Reusable">Reusable</a>&lt;T&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#204-209' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Returns allocated on the heap struct, an actual (re)allocation will be performed
-only if there is not enough space in this Growable
-or the pointer alignment is invalid.</p>
-</div><h4 id='method.assign_as_trait' class="method"><span id='assign_as_trait.v' class='invisible'><code>pub fn <a href='#method.assign_as_trait' class='fnname'>assign_as_trait</a>&lt;T, U:&nbsp;?<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>&gt;(self, t: T) -&gt; <a class="struct" href="../growable/struct.Reusable.html" title="struct growable::Reusable">Reusable</a>&lt;U&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Unsize.html" title="trait core::marker::Unsize">Unsize</a>&lt;U&gt; + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;U: 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#210-215' title='goto source code'>[src]</a></span></h4>
+only if there is not enough space or the pointer alignment is invalid.</p>
+</div><h4 id='method.assign_as_trait' class="method"><span id='assign_as_trait.v' class='invisible'><code>pub fn <a href='#method.assign_as_trait' class='fnname'>assign_as_trait</a>&lt;T, U:&nbsp;?<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>&gt;(self, t: T) -&gt; <a class="struct" href="../growable/struct.Reusable.html" title="struct growable::Reusable">Reusable</a>&lt;U&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Unsize.html" title="trait core::marker::Unsize">Unsize</a>&lt;U&gt; + 'static,<br>&nbsp;&nbsp;&nbsp;&nbsp;U: 'static,&nbsp;</span></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#235-240' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Returns allocated on the heap struct, an actual (re)allocation will be performed
-only if there is not enough space in this Growable
-or the pointer alignment is invalid.
-Additionally stores meta pointer to the vtable creating trait object.</p>
+only if there is not enough space or the pointer alignment is invalid.
+Additionally stores a pointer to the vtable creating trait object.</p>
 
 <h1 id='examples-1' class='section-header'><a href='#examples-1'>Examples</a></h1>
 <pre class="rust rust-example-rendered">
@@ -133,16 +138,16 @@ Additionally stores meta pointer to the vtable creating trait object.</p>
             <h2 id='implementations' class='small-section-header'>
               Trait Implementations<a href='#implementations' class='anchor'></a>
             </h2>
-        <h3 id='impl-Clone' class='impl'><span class='in-band'><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> for <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl-Clone' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#115-123' title='goto source code'>[src]</a></span></h3>
-<div class='impl-items'><h4 id='method.clone' class="method"><span id='clone.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#117-122' title='goto source code'>[src]</a></span></h4>
+        <h3 id='impl-Clone' class='impl'><span class='in-band'><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> for <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl-Clone' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#121-129' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.clone' class="method"><span id='clone.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; Self</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#123-128' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
 </div><h4 id='method.clone_from' class="method"><span id='clone_from.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;</a>Self)</code></span><span class='out-of-band'><div class='ghost'></div><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div><a class='srclink' href='https://doc.rust-lang.org/nightly/src/core/clone.rs.html#112-114' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
-</div></div><h3 id='impl-Debug' class='impl'><span class='in-band'><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> for <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl-Debug' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#125-135' title='goto source code'>[src]</a></span></h3>
-<div class='impl-items'><h4 id='method.fmt' class="method"><span id='fmt.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, formatter: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html" title="struct core::fmt::Formatter">Formatter</a>) -&gt; <a class="type" href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html" title="type core::fmt::Result">Result</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#127-134' title='goto source code'>[src]</a></span></h4>
-<div class='docblock'><p>Formats the value using the given formatter.</p>
-</div></div><h3 id='impl-Drop' class='impl'><span class='in-band'><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html" title="trait core::ops::drop::Drop">Drop</a> for <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl-Drop' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#137-149' title='goto source code'>[src]</a></span></h3>
-<div class='impl-items'><h4 id='method.drop' class="method"><span id='drop.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#139-148' title='goto source code'>[src]</a></span></h4>
+</div></div><h3 id='impl-Debug' class='impl'><span class='in-band'><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> for <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl-Debug' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#131-141' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.fmt' class="method"><span id='fmt.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, formatter: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html" title="struct core::fmt::Formatter">Formatter</a>) -&gt; <a class="type" href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html" title="type core::fmt::Result">Result</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#133-140' title='goto source code'>[src]</a></span></h4>
+<div class='docblock'><p>Formats the value using the given formatter. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt">Read more</a></p>
+</div></div><h3 id='impl-Drop' class='impl'><span class='in-band'><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html" title="trait core::ops::drop::Drop">Drop</a> for <a class="enum" href="../growable/enum.Growable.html" title="enum growable::Growable">Growable</a></code><a href='#impl-Drop' class='anchor'></a></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#143-157' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.drop' class="method"><span id='drop.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/growable/lib.rs.html#145-156' title='goto source code'>[src]</a></span></h4>
 <div class='docblock'><p>Executes the destructor for this type. <a href="https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html#tymethod.drop">Read more</a></p>
 </div></div></section>
     <section id='search' class="content hidden"></section>
@@ -161,13 +166,15 @@ Additionally stores meta pointer to the vtable creating trait object.</p>
                     <dd>Show this help dialog</dd>
                     <dt>S</dt>
                     <dd>Focus the search field</dd>
-                    <dt>&larrb;</dt>
+                    <dt>↑</dt>
                     <dd>Move up in search results</dd>
-                    <dt>&rarrb;</dt>
+                    <dt>↓</dt>
                     <dd>Move down in search results</dd>
+                    <dt>↹</dt>
+                    <dd>Switch tab</dd>
                     <dt>&#9166;</dt>
                     <dd>Go to active search result</dd>
-                    <dt>+</dt>
+                    <dt style="width:31px;">+ / -</dt>
                     <dd>Collapse/expand all sections</dd>
                 </dl>
             </div>
