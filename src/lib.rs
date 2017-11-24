@@ -147,7 +147,7 @@ impl Drop for Growable {
             &mut Growable::Some { len, ptr_alignment, ref mut ptr } => {
                 unsafe {
                     if len != 0 {
-                        Heap.dealloc(ptr.as_mut(), Layout::from_size_align_unchecked(len, ptr_alignment));
+                        Heap.dealloc(ptr.as_ptr(), Layout::from_size_align_unchecked(len, ptr_alignment));
                     }
                 }
             },
@@ -257,16 +257,23 @@ impl Growable {
                     }
                     let layout_curr = Layout::from_size_align_unchecked(*curr_len, ptr_alignment);
                     let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
-                    *ptr = match Heap.realloc(ptr.as_mut(), layout_curr, layout) {
-                         Ok(ptr) => {
-                            if ! ptr.is_null() { Unique::new_unchecked(ptr) }
-                            else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
-                        },
-                        Err(err) => {
-                            if err.is_memory_exhausted() { Heap.oom(err) }
-                            else { panic!("got an unexpected failure on a allocation attempt: {:?}", err); }
-                        }
+                    let grow_in_place = if layout_curr.align() != layout.align() {
+                        false
+                    } else {
+                        Heap.grow_in_place(ptr.as_ptr(), layout_curr.clone(), layout.clone()).is_ok()
                     };
+                    if ! grow_in_place {
+                        *ptr = match Heap.realloc(ptr.as_ptr(), layout_curr, layout) {
+                             Ok(ptr) => {
+                                if ! ptr.is_null() { Unique::new_unchecked(ptr) }
+                                else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
+                            },
+                            Err(err) => {
+                                if err.is_memory_exhausted() { Heap.oom(err) }
+                                else { panic!("got an unexpected failure on a allocation attempt: {:?}", err); }
+                            }
+                        };
+                    }
                     *curr_ptr_alignment = ptr_alignment;
                     *curr_len = len;
                 }
