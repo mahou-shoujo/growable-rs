@@ -28,7 +28,7 @@
 //! [Lifeguard](https://crates.io/crates/lifeguard), but also can be used as a standalone library.
 //!
 //! Note that this crate uses a lot of ground-breaking features of Rust and therefore
-//! is only available on current Nighty build.
+//! is only available on current Nightly build.
 
 #![
     deny(
@@ -37,7 +37,7 @@
         trivial_numeric_casts, unused_qualifications, unused_import_braces
     )
 ]
-#![feature(allocator_api, alloc, coerce_unsized, unsize, unique)]
+#![feature(allocator_api, alloc, coerce_unsized, pointer_methods, unsize, unique)]
 
 #[cfg(feature="use_lifeguard")] extern crate lifeguard;
 extern crate alloc;
@@ -300,14 +300,21 @@ impl Growable {
     }
 
     fn assign_into<T>(&mut self, t: &T, ptr_alignment: usize, len: usize) -> Reusable<T> where T: ?Sized + 'static {
-        let len = next_highest_power_of_2(len);
-        self.grow(len, ptr_alignment);
-        if let &mut Growable::Some { len, mut ptr, .. } = self {
+        let len_to_allocate = next_highest_power_of_2(len);
+        self.grow(len_to_allocate, ptr_alignment);
+        if let &mut Growable::Some { ptr, .. } = self {
             unsafe {
+                #[repr(C)]
+                struct Pointer {
+                    thin: *mut u8,
+                    meta: *mut u8,
+                }
                 let mut t = t as *const T as *mut T;
-                let _thin = mem::transmute::<&mut *mut T, &mut *mut u8>(&mut t);
-                ptr::copy(*_thin, ptr.as_mut(), len);
-                *_thin = ptr.as_mut();
+                {
+                    let mut t = mem::transmute::<&mut *mut T, &mut Pointer>(&mut t);
+                    ptr.as_ptr().copy_from(t.thin, len);
+                    t.thin = ptr.as_ptr();
+                }
                 Reusable {
                     len,
                     ptr_alignment,
