@@ -121,9 +121,9 @@ impl lifeguard::Recycleable for Growable {
 impl Clone for Growable {
 
     fn clone(&self) -> Self {
-        match self {
-            &Growable::Some { len, ptr_alignment, .. } => Self::with_capacity(len, ptr_alignment),
-            &Growable::None => Growable::None
+        match *self {
+            Growable::Some { len, ptr_alignment, .. } => Self::with_capacity(len, ptr_alignment),
+            Growable::None => Growable::None
         }
     }
 }
@@ -131,10 +131,10 @@ impl Clone for Growable {
 impl fmt::Debug for Growable {
 
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Growable::Some { len, ptr_alignment, ptr } =>
+        match *self {
+            Growable::Some { len, ptr_alignment, ptr } =>
                 write!(formatter, "Growable::Some {{ len: {:?}, ptr_alignment: {:?}, ptr: {:?} }}", len, ptr_alignment, ptr.as_ptr()),
-            &Growable::None =>
+            Growable::None =>
                 write!(formatter, "Growable::None")
         }
     }
@@ -143,16 +143,23 @@ impl fmt::Debug for Growable {
 impl Drop for Growable {
 
     fn drop(&mut self) {
-        match self {
-            &mut Growable::Some { len, ptr_alignment, ref mut ptr } => {
+        match *self {
+            Growable::Some { len, ptr_alignment, ref mut ptr } => {
                 unsafe {
                     if len != 0 {
                         Heap.dealloc(ptr.as_ptr(), Layout::from_size_align_unchecked(len, ptr_alignment));
                     }
                 }
             },
-            &mut Growable::None => ()
+            Growable::None => ()
         }
+    }
+}
+
+impl Default for Growable {
+
+    fn default() -> Self {
+        Growable::new()
     }
 }
 
@@ -182,9 +189,9 @@ impl Growable {
 
     /// Returns the amount of memory allocated by this Growable.
     pub fn len(&self) -> usize {
-        match self {
-            &Growable::Some { len, .. } => len,
-            &Growable::None => 0
+        match *self {
+            Growable::Some { len, .. } => len,
+            Growable::None => 0
         }
     }
 
@@ -193,9 +200,9 @@ impl Growable {
 
     /// Returns an alignment of an underlying memory pointer if any.
     pub fn ptr_alignment(&self) -> Option<usize> {
-        match self {
-            &Growable::Some { len, .. } => Some(len),
-            &Growable::None => None
+        match *self {
+            Growable::Some { len, .. } => Some(len),
+            Growable::None => None
         }
     }
 
@@ -240,10 +247,10 @@ impl Growable {
     }
 
     fn grow(&mut self, len: usize, ptr_alignment: usize) {
-        match self {
-            &mut Growable::Some { len: ref mut curr_len,
-                                  ptr_alignment: ref mut curr_ptr_alignment,
-                                  ref mut ptr } if *curr_len < len || *curr_ptr_alignment < ptr_alignment => {
+        match *self {
+            Growable::Some { len: ref mut curr_len,
+                             ptr_alignment: ref mut curr_ptr_alignment,
+                             ref mut ptr } if *curr_len < len || *curr_ptr_alignment < ptr_alignment => {
                 let len = cmp::max(*curr_len, len);
                 unsafe {
                     if len == 0 {
@@ -278,8 +285,8 @@ impl Growable {
                     *curr_len = len;
                 }
             },
-            &mut Growable::Some { .. } => (),
-            &mut Growable::None => {
+            Growable::Some { .. } => (),
+            Growable::None => {
                 unsafe {
                     let ptr = if len != 0 {
                         let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
@@ -309,7 +316,7 @@ impl Growable {
     fn assign_into<T>(&mut self, t: &T, ptr_alignment: usize, len: usize) -> Reusable<T> where T: ?Sized + 'static {
         let len_to_allocate = next_highest_power_of_2(len);
         self.grow(len_to_allocate, ptr_alignment);
-        if let &mut Growable::Some { ptr, .. } = self {
+        if let Growable::Some { ptr, .. } = *self {
             unsafe {
                 #[repr(C)]
                 struct Pointer {
