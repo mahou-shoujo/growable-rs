@@ -49,7 +49,7 @@ use std::cmp;
 use std::fmt;
 use std::mem;
 use std::ptr;
-use std::ptr::Unique;
+use std::ptr::NonNull;
 use alloc::allocator::{Alloc, Layout};
 use alloc::heap::Heap;
 
@@ -104,7 +104,7 @@ pub enum Growable {
         /// Required alignment for the pointer.
         ptr_alignment: usize,
         /// Pointer.
-        ptr: Unique<u8>
+        ptr: NonNull<u8>
     },
     /// No assigned memory.
     None
@@ -272,7 +272,7 @@ impl Growable {
                     if ! grow_in_place {
                         *ptr = match Heap.realloc(ptr.as_ptr(), layout_curr, layout) {
                              Ok(ptr) => {
-                                if ! ptr.is_null() { Unique::new_unchecked(ptr) }
+                                if ! ptr.is_null() { NonNull::new_unchecked(ptr) }
                                 else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
                             },
                             Err(err) => {
@@ -292,7 +292,7 @@ impl Growable {
                         let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
                         match Heap.alloc(layout) {
                              Ok(ptr) => {
-                                if ! ptr.is_null() { Unique::new_unchecked(ptr) }
+                                if ! ptr.is_null() { NonNull::new_unchecked(ptr) }
                                 else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
                             },
                             Err(err) => {
@@ -301,7 +301,7 @@ impl Growable {
                             }
                         }
                     } else {
-                        Unique::empty()
+                        NonNull::dangling()
                     };
                     *self = Growable::Some {
                         len,
@@ -332,7 +332,7 @@ impl Growable {
                 Reusable {
                     len,
                     ptr_alignment,
-                    ptr: Unique::new_unchecked(t)
+                    ptr: NonNull::new_unchecked(t)
                 }
             }
         } else {
@@ -347,7 +347,7 @@ impl Growable {
 pub struct Reusable<T: ?Sized> {
     len: usize,
     ptr_alignment: usize,
-    ptr: Unique<T>
+    ptr: NonNull<T>
 }
 
 impl<T> ops::Deref for Reusable<T> where T: ?Sized {
@@ -404,7 +404,7 @@ impl<T> Reusable<T> where T: ?Sized {
             Growable::Some {
                 len: self.len,
                 ptr_alignment: self.ptr_alignment,
-                ptr: Unique::new_unchecked(ptr as *mut u8)
+                ptr: NonNull::new_unchecked(ptr as *mut u8)
             }
         }
     }
