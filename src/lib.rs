@@ -1,74 +1,47 @@
-/*
- * Copyright (c) 2017 Eugene P. <mahou@shoujo.pw>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 //! A growable, reusable box for Rust.
 //!
 //! This crate provides a custom Box type with matching API that also allows to reuse the same
-//! box to store different types with minimal amount of allocations and is supposed to be
+//! heap to store different types with the minimal amount of allocations and is supposed to be
 //! used with a custom, pool-based allocator of user's choice such as
-//! [Lifeguard](https://crates.io/crates/lifeguard), but also can be used as a standalone library.
+//! [Lifeguard](https://crates.io/crates/lifeguard), but also can be used as a standalone solution.
 //!
-//! Note that this crate uses a lot of ground-breaking features of Rust and therefore
-//! is only available on current Nightly build.
+//! # Notes
+//! 
+//! This crate uses a lot of ground-breaking features of Rust and therefore
+//! is only available on the latest Nightly build.
 
-#![
-    deny(
-        missing_docs,
-        missing_copy_implementations, missing_debug_implementations,
-        trivial_numeric_casts, unused_qualifications, unused_import_braces
-    )
-]
-#![feature(allocator_api, alloc, coerce_unsized, pointer_methods, unsize, unique)]
+#![deny(missing_docs)]
+#![feature(allocator_api, alloc, coerce_unsized, unsize)]
 
 #[cfg(feature="use_lifeguard")] extern crate lifeguard;
 extern crate alloc;
 
-use std::marker::Unsize;
-use std::ops;
-use std::ops::CoerceUnsized;
 use std::cmp;
 use std::fmt;
+use std::marker::Unsize;
 use std::mem;
+use std::ops;
+use std::ops::CoerceUnsized;
 use std::ptr;
 use std::ptr::NonNull;
-use alloc::allocator::{Alloc, Layout};
-use alloc::heap::Heap;
+use alloc::alloc::Global;
+use alloc::allocator::{handle_alloc_error, Alloc, Excess, Layout};
 
-/// A chunk of heap memory that can be assigned to a struct or a trait object.
-/// Until assigned to some data it behaves similarly to a Box<[u8; N]>,
-/// it can be cloned and would be dropped if leaves the scope.
+/// A chunk of the heap memory that can be assigned with an arbitrary type.
+/// Until assigned with some data it behaves similarly to a `Box<[u8; N]>`,
+/// it can be cloned and will be dropped if leaves the scope.
 ///
 /// # Examples
 ///
-/// First, let's spawn a new Growable. In this case
-/// no allocation would be performed on init.
+/// First, let's spawn a new Growable. In this case no allocation will be performed.
 ///
 /// ```
 /// # use growable::*;
 ///   let growable = Growable::new();
-/// # let arr: Reusable<[char; 3]> = growable.assign(['f', 'o', 'o']);
+/// # let arr: Reusable<[char; 3]> = growable.consume(['f', 'o', 'o']);
 /// # assert_eq!(&*arr, &['f', 'o', 'o']);
 /// # let growable = arr.free();
-/// # let arr: Reusable<[char; 6]> = growable.assign(['f', 'o', 'o', 'b', 'a', 'r']);
+/// # let arr: Reusable<[char; 6]> = growable.consume(['f', 'o', 'o', 'b', 'a', 'r']);
 /// # assert_eq!(&*arr, &['f', 'o', 'o', 'b', 'a', 'r']);
 /// ```
 ///
@@ -77,280 +50,255 @@ use alloc::heap::Heap;
 /// ```
 /// # use growable::*;
 /// # let growable = Growable::new();
-///   let arr: Reusable<[char; 3]> = growable.assign(['f', 'o', 'o']);
+///   let arr: Reusable<[char; 3]> = growable.consume(['f', 'o', 'o']);
 ///   assert_eq!(&*arr, &['f', 'o', 'o']);
 /// # let growable = arr.free();
-/// # let arr: Reusable<[char; 6]> = growable.assign(['f', 'o', 'o', 'b', 'a', 'r']);
+/// # let arr: Reusable<[char; 6]> = growable.consume(['f', 'o', 'o', 'b', 'a', 'r']);
 /// # assert_eq!(&*arr, &['f', 'o', 'o', 'b', 'a', 'r']);
 /// ```
 ///
-/// Unwanted data could be then freed on demand, fetching Growable back.
-/// Then it could be assigned to some data again and so on.
+/// No longer wanted data can be then freed on demand, fetching Growable back.
+/// Then it could be assigned with some data again and so on.
 ///
 /// ```
 /// # use growable::*;
 /// # let growable = Growable::new();
-/// # let arr: Reusable<[char; 3]> = growable.assign(['f', 'o', 'o']);
+/// # let arr: Reusable<[char; 3]> = growable.consume(['f', 'o', 'o']);
 /// # assert_eq!(&*arr, &['f', 'o', 'o']);
 ///   let growable = arr.free();
-///   let arr: Reusable<[char; 6]> = growable.assign(['f', 'o', 'o', 'b', 'a', 'r']);
+///   let arr: Reusable<[char; 6]> = growable.consume(['f', 'o', 'o', 'b', 'a', 'r']);
 ///   assert_eq!(&*arr, &['f', 'o', 'o', 'b', 'a', 'r']);
 /// ```
-pub enum Growable {
-    /// Pre-allocated chunk of memory.
-    Some {
-        /// Memory block length.
-        len: usize,
-        /// Required alignment for the pointer.
-        ptr_alignment: usize,
-        /// Pointer.
-        ptr: NonNull<u8>
-    },
-    /// No assigned memory.
-    None
-}
-
-#[cfg(feature="use_lifeguard")]
-impl lifeguard::Recycleable for Growable {
-
-    fn new() -> Self { Growable::new() }
-
-    fn reset(&mut self) { }
+/// 
+/// [`Box`]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+pub struct Growable {
+    len: usize,
+    ptr_alignment: usize,
+    ptr: NonNull<u8>,
 }
 
 impl Clone for Growable {
 
+    #[inline]
     fn clone(&self) -> Self {
-        match *self {
-            Growable::Some { len, ptr_alignment, .. } => Self::with_capacity(len, ptr_alignment),
-            Growable::None => Growable::None
-        }
+        Self::with_capacity(self.len, self.ptr_alignment)
     }
+}
+
+impl fmt::Pointer for Growable {
+    
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result { fmt::Pointer::fmt(&self.ptr, formatter) }
 }
 
 impl fmt::Debug for Growable {
 
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Growable::Some { len, ptr_alignment, ptr } =>
-                write!(formatter, "Growable::Some {{ len: {:?}, ptr_alignment: {:?}, ptr: {:?} }}", len, ptr_alignment, ptr.as_ptr()),
-            Growable::None =>
-                write!(formatter, "Growable::None")
-        }
-    }
-}
-
-impl Drop for Growable {
-
-    fn drop(&mut self) {
-        match *self {
-            Growable::Some { len, ptr_alignment, ref mut ptr } => {
-                unsafe {
-                    if len != 0 {
-                        Heap.dealloc(ptr.as_ptr(), Layout::from_size_align_unchecked(len, ptr_alignment));
-                    }
-                }
-            },
-            Growable::None => ()
+        match self.len {
+            0 => write!(formatter, "Growable::None"),
+            _ => write!(formatter, "Growable::Some<len = {:?}, align = {:?}>({:p})", self.len, self.ptr_alignment, self.ptr),
         }
     }
 }
 
 impl Default for Growable {
 
+    #[inline]
     fn default() -> Self {
         Growable::new()
     }
 }
 
+impl Drop for Growable {
+
+    fn drop(&mut self) {
+        if self.len != 0 {
+            unsafe {
+                Global.dealloc(self.ptr, Layout::from_size_align_unchecked(self.len, self.ptr_alignment));
+            }
+        }
+    }
+}
+
 impl Growable {
-
-    /// Returns a new instance of Growable but does not allocate any memory on the heap yet.
+    
+    /// Returns a new instance of `Growable` but does not allocate any memory on the heap yet.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use growable::*;
+    ///   let _ = Growable::new();
+    /// ```
+    /// 
+    /// [`Growable`]: struct.Growable.html
+    #[inline]
     pub fn new() -> Self {
-        Growable::None
+        Growable::with_capacity(0, 1)
     }
 
-    /// Returns a new instance of Growable with memory already allocated on the heap suitable to
+    /// Returns a new instance of `Growable` with memory already allocated on the heap suitable to
     /// store an instance of a given type T.
-    pub fn with_capacity_for<T>() -> Self {
-        Self::with_capacity(mem::size_of::<T>(), mem::align_of::<T>())
-    }
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use growable::*;
+    ///   struct Foo {
+    ///       a: u8,
+    ///       b: usize,
+    ///       c: (),
+    ///   }
+    ///   let _ = Growable::with_capacity_for_type::<Foo>();
+    /// ```
+    /// 
+    /// [`Growable`]: struct.Growable.html
+    #[inline]
+    pub fn with_capacity_for_type<T>() -> Self { Self::with_capacity(mem::size_of::<T>(), mem::align_of::<T>()) }
 
-    /// Returns a new instance of Growable with memory already allocated on the heap.
-    /// In stable Rust it is possible to get a required pointer alignment
-    /// for any type with [`align_of`] function.
+    /// Returns a new instance of `Growable` with memory already allocated on the heap.
     ///
-    /// [`align_of`]: https://doc.rust-lang.org/std/mem/fn.align_of.html
+    /// # Panics
+    /// 
+    /// * `ptr_alignment` is not a power of two.
+    /// * `len` overflows after being rounded up to the nearest multiple of the alignment.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use growable::*;
+    ///   let _ = Growable::with_capacity(256, 16);
+    /// ```
+    /// 
+    /// [`Growable`]: struct.Growable.html
+    #[inline]
     pub fn with_capacity(len: usize, ptr_alignment: usize) -> Self {
-        let mut temp = Self::new();
-        temp.grow(len, ptr_alignment);
-        temp
-    }
-
-    /// Returns the amount of memory allocated by this Growable.
-    pub fn len(&self) -> usize {
-        match *self {
-            Growable::Some { len, .. } => len,
-            Growable::None => 0
+        unsafe {
+            let Excess(ptr, len) = if len != 0 {
+                let layout = Layout::from_size_align(len, ptr_alignment).expect("Growable::with_capacity: invalid layout");
+                Global.alloc_excess(layout).unwrap_or_else(|_| handle_alloc_error(layout))
+            } else {
+                assert!(ptr_alignment.is_power_of_two(), "Growable::with_capacity: alignment must be a power of two");
+                Excess(NonNull::<u8>::dangling(), 0)
+            };
+            Growable {
+                len,
+                ptr_alignment,
+                ptr,
+            }
         }
     }
 
     /// Returns true if no memory has been allocated yet.
+    #[inline]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
-    /// Returns an alignment of an underlying memory pointer if any.
-    pub fn ptr_alignment(&self) -> Option<usize> {
-        match *self {
-            Growable::Some { len, .. } => Some(len),
-            Growable::None => None
-        }
-    }
+    /// Returns the amount of memory allocated by this `Growable`.
+    /// 
+    /// [`Growable`]: struct.Growable.html
+    #[inline]
+    pub fn len(&self) -> usize { self.len }
 
-    /// Returns allocated on the heap struct, an actual (re)allocation will be performed
-    /// only if there is not enough space or the pointer alignment is invalid.
-    pub fn assign<T>(mut self, t: T) -> Reusable<T> where T: 'static {
-        let result = self.assign_into(&t as &T, mem::align_of::<T>(), mem::size_of::<T>());
-        mem::forget(t);
-        mem::forget(self);
-        result
-    }
+    /// Returns the alignment.
+    #[inline]
+    pub fn alignment(&self) -> usize { self.ptr_alignment }
 
-    /// Returns allocated on the heap struct, an actual (re)allocation will be performed
+    /// Places an instance of `T` on the heap, an actual (re)allocation will be performed
     /// only if there is not enough space or the pointer alignment is invalid.
-    /// Additionally stores a pointer to the vtable creating trait object.
-    ///
+    /// 
+    /// # Notes
+    /// 
+    /// Might trigger `oom()` handler.
+    /// 
     /// # Examples
-    ///
+    /// 
     /// ```
     /// # use growable::*;
-    ///   trait Answerer {
-    ///
-    ///       fn get_answer(&self) -> u32;
-    ///   }
-    ///
-    ///   struct Foo;
-    ///
-    ///   impl Answerer for Foo {
-    ///
-    ///       fn get_answer(&self) -> u32 { 42 }
-    ///   }
-    ///
-    ///   let growable = Growable::new();
-    ///   let foo: Reusable<Answerer> = growable.assign_as_trait(Foo);
-    ///   assert_eq!(foo.get_answer(), 42);
+    ///   let growable = Growable::with_capacity(128, 8);
+    ///   let num = growable.consume(0usize);
+    ///   assert_eq!(*num, 0usize);
     /// ```
-    pub fn assign_as_trait<T, U>(mut self, t: T) -> Reusable<U> where T: Unsize<U> + 'static, U: ?Sized + 'static {
-        let result = self.assign_into(&t as &U, mem::align_of::<T>(), mem::size_of::<T>());
-        mem::forget(t);
-        mem::forget(self);
-        result
+    #[inline]
+    pub fn consume<T>(mut self, t: T) -> Reusable<T> {
+        self.grow(mem::size_of::<T>(), mem::align_of::<T>());
+        self.copy(t)
     }
 
     fn grow(&mut self, len: usize, ptr_alignment: usize) {
-        match *self {
-            Growable::Some { len: ref mut curr_len,
-                             ptr_alignment: ref mut curr_ptr_alignment,
-                             ref mut ptr } if *curr_len < len || *curr_ptr_alignment < ptr_alignment => {
-                let len = cmp::max(*curr_len, len);
-                unsafe {
-                    if len == 0 {
-                        unreachable!("
-                            A reallocation request has been detected for a zero-sized type
-                            which should not be possible but here we are. It would
-                            be most appreciated if you could create a new issue describing
-                            a way to reproduce this behavior on a project's GitHub page:
-
-                            https://github.com/mahou-shoujo/growable-rs");
-                    }
-                    let layout_curr = Layout::from_size_align_unchecked(*curr_len, ptr_alignment);
-                    let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
-                    let grow_in_place = if layout_curr.align() != layout.align() {
-                        false
-                    } else {
-                        Heap.grow_in_place(ptr.as_ptr(), layout_curr.clone(), layout.clone()).is_ok()
-                    };
-                    if ! grow_in_place {
-                        *ptr = match Heap.realloc(ptr.as_ptr(), layout_curr, layout) {
-                             Ok(ptr) => {
-                                if ! ptr.is_null() { NonNull::new_unchecked(ptr) }
-                                else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
-                            },
-                            Err(err) => {
-                                if err.is_memory_exhausted() { Heap.oom(err) }
-                                else { panic!("got an unexpected failure on a allocation attempt: {:?}", err); }
-                            }
-                        };
-                    }
-                    *curr_ptr_alignment = ptr_alignment;
-                    *curr_len = len;
-                }
-            },
-            Growable::Some { .. } => (),
-            Growable::None => {
-                unsafe {
-                    let ptr = if len != 0 {
-                        let layout = Layout::from_size_align(len, ptr_alignment).expect("an invalid allocation request in self.grow");
-                        match Heap.alloc(layout) {
-                             Ok(ptr) => {
-                                if ! ptr.is_null() { NonNull::new_unchecked(ptr) }
-                                else { panic!("got an unexpected failure on a allocation attempt: nullptr returned"); }
-                            },
-                            Err(err) => {
-                                if err.is_memory_exhausted() { Heap.oom(err) }
-                                else { panic!("got an unexpected failure on a allocation attempt: {:?}", err); }
-                            }
-                        }
-                    } else {
-                        NonNull::dangling()
-                    };
-                    *self = Growable::Some {
-                        len,
-                        ptr_alignment,
-                        ptr
-                    };
-                }
+        // NB: len is valid or zero, ptr_alignment is always valid.
+        if self.len == 0 {
+            // Growing from zero length could be done with Growable::with_capacity call.
+            *self = Growable::with_capacity(len, ptr_alignment);
+            return;
+        }
+        if self.len >= len &&
+           self.ptr_alignment >= ptr_alignment {
+            // No allocation is required.
+            return;
+        }
+        
+        let len = cmp::max(self.len, len);
+        // NB: Could be a bug if there is a way to define a ZST with align_of() greater than one?!
+        debug_assert_ne!(len, 0, "Growable::grow: realloc to zero");
+        unsafe {
+            let layout_curr = Layout::from_size_align_unchecked(self.len, self.ptr_alignment);
+            let layout = Layout::from_size_align_unchecked(len, ptr_alignment);
+            // If the alignment is the same we can try to grow in place.
+            let growed_in_place =
+                layout.align() == layout_curr.align() &&
+                    Global.grow_in_place(self.ptr, layout_curr, len).is_ok();
+            if !growed_in_place {
+                // Oops, a reallocation is required.
+                let Excess(ptr, len) = Global.realloc_excess(self.ptr, layout_curr, len).unwrap_or_else(|_| handle_alloc_error(layout));
+                self.len = len;
+                self.ptr_alignment = ptr_alignment;
+                self.ptr = ptr;
+            } else {
+                // On successful grow_in_place we only need to update len.
+                self.len = len;
+            }
+        }
+    }
+    
+    fn copy<T>(self, t: T) -> Reusable<T> {
+        // NB: len is at least equal to size_of::<T>(), ptr_alignment is at least equal to align_of::<T>().  
+        let result = unsafe {
+            let ptr_raw = self.ptr.cast::<T>().as_ptr();
+            ptr_raw.write(t);
+            let ptr = NonNull::new_unchecked(ptr_raw);
+            Reusable {
+                len: self.len,
+                ptr_alignment: self.ptr_alignment,
+                ptr,
             }
         };
-    }
-
-    fn assign_into<T>(&mut self, t: &T, ptr_alignment: usize, len: usize) -> Reusable<T> where T: ?Sized + 'static {
-        let len_to_allocate = next_highest_power_of_2(len);
-        self.grow(len_to_allocate, ptr_alignment);
-        if let Growable::Some { ptr, .. } = *self {
-            unsafe {
-                #[repr(C)]
-                struct Pointer {
-                    thin: *mut u8,
-                    meta: *mut u8,
-                }
-                let mut t = t as *const T as *mut T;
-                {
-                    let mut t = mem::transmute::<&mut *mut T, &mut Pointer>(&mut t);
-                    ptr.as_ptr().copy_from(t.thin, len);
-                    t.thin = ptr.as_ptr();
-                }
-                Reusable {
-                    len,
-                    ptr_alignment,
-                    ptr: NonNull::new_unchecked(t)
-                }
-            }
-        } else {
-            unreachable!()
-        }
+        mem::forget(self);
+        result
     }
 }
 
-/// Growable with some data assigned to it. It behaves just
-/// like default Box does (so it WILL free memory on drop) but also
-/// could be freed manually, fetching Growable back.
+/// A reusable box. It behaves just
+/// like the default [`Box`] (hence it WILL free memory on drop) but also
+/// could be freed manually, fetching a [`Growable`] back.
+/// 
+/// [`Box`]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+/// [`Growable`]: struct.Growable.html
 pub struct Reusable<T: ?Sized> {
     len: usize,
     ptr_alignment: usize,
-    ptr: NonNull<T>
+    ptr: NonNull<T>,
 }
 
-impl<T> ops::Deref for Reusable<T> where T: ?Sized {
+impl<T> Clone for Reusable<T>
+    where
+        T: ?Sized + Clone, {
+    
+    fn clone(&self) -> Self {
+        let growable = Growable::with_capacity_for_type::<T>();
+        growable.consume(T::clone(&*self))
+    }
+}
+
+impl<T: ?Sized> ops::Deref for Reusable<T> {
 
     type Target = T;
 
@@ -361,7 +309,7 @@ impl<T> ops::Deref for Reusable<T> where T: ?Sized {
     }
 }
 
-impl<T> ops::DerefMut for Reusable<T> where T: ?Sized {
+impl<T: ?Sized> ops::DerefMut for Reusable<T> {
 
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
@@ -370,7 +318,16 @@ impl<T> ops::DerefMut for Reusable<T> where T: ?Sized {
     }
 }
 
-impl<T> fmt::Debug for Reusable<T> where T: ?Sized + fmt::Debug {
+impl<T> fmt::Pointer for Reusable<T>
+    where
+        T: ?Sized, {
+
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result { fmt::Pointer::fmt(&self.ptr, formatter) }
+}
+
+impl<T> fmt::Debug for Reusable<T>
+    where
+        T: ?Sized + fmt::Debug, {
 
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let t: &T = &*self;
@@ -378,77 +335,40 @@ impl<T> fmt::Debug for Reusable<T> where T: ?Sized + fmt::Debug {
     }
 }
 
-impl<T> Drop for Reusable<T> where T: ?Sized {
+impl<T: ?Sized> Drop for Reusable<T> {
 
     fn drop(&mut self) {
         self.free_in_place();
     }
 }
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Reusable<U>> for Reusable<T> {}
+impl<T, U> CoerceUnsized<Reusable<U>> for Reusable<T>
+    where
+        T: ?Sized + Unsize<U>,
+        U: ?Sized, {
+}
 
-impl<T> Reusable<T> where T: ?Sized {
+impl<T: ?Sized> Reusable<T> {
 
-    /// Performs drop call on the stored value and returns
-    /// freed memory block back as a Growable struct.
+    /// Drops the value and returns the memory back as a [`Growable`].
+    /// 
+    /// [`Growable`]: struct.Growable.html
+    #[inline]
     pub fn free(mut self) -> Growable {
         let growable = self.free_in_place();
         mem::forget(self);
         growable
     }
 
+    #[inline]
     fn free_in_place(&mut self) -> Growable {
         unsafe {
-            let ptr = self.ptr.as_ptr();
-            ptr::drop_in_place(ptr);
-            Growable::Some {
+            ptr::drop_in_place(self.ptr.as_ptr());
+            Growable {
                 len: self.len,
                 ptr_alignment: self.ptr_alignment,
-                ptr: NonNull::new_unchecked(ptr as *mut u8)
+                ptr: self.ptr.cast(),
             }
         }
-    }
-}
-
-#[inline]
-fn next_highest_power_of_2(mut num: usize) -> usize {
-    if 0 == num {
-        return 0;
-    }
-    num -= 1;
-    num |= num >> 0x01;
-    num |= num >> 0x02;
-    num |= num >> 0x04;
-    num |= num >> 0x08;
-    num |= num >> 0x10;
-    if mem::size_of::<usize>() > 4 {
-        num |= num >> 0x20;
-    }
-    num += 1;
-    num
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn test_next_highest_power_of_2() {
-        assert_eq!(next_highest_power_of_2(0), 0);
-        assert_eq!(next_highest_power_of_2(1), 1);
-        assert_eq!(next_highest_power_of_2(2), 2);
-        assert_eq!(next_highest_power_of_2(3), 4);
-        assert_eq!(next_highest_power_of_2(4), 4);
-        assert_eq!(next_highest_power_of_2(5), 8);
-        assert_eq!(next_highest_power_of_2(6), 8);
-        assert_eq!(next_highest_power_of_2(7), 8);
-        assert_eq!(next_highest_power_of_2(8), 8);
-        assert_eq!(next_highest_power_of_2(15), 16);
-        assert_eq!(next_highest_power_of_2(16), 16);
-        assert_eq!(next_highest_power_of_2(17), 32);
-        assert_eq!(next_highest_power_of_2(24), 32);
-        assert_eq!(next_highest_power_of_2(45), 64);
-        assert_eq!(next_highest_power_of_2(64), 64);
     }
 }
