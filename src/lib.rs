@@ -28,7 +28,7 @@ use alloc::alloc::Global;
 use alloc::allocator::{handle_alloc_error, Alloc, Excess, Layout};
 
 /// A chunk of the heap memory that can be assigned with an arbitrary type.
-/// Until assigned with some data it behaves similarly to a [`Box<\[u8; N\]>`],
+/// Until assigned with some data it behaves similarly to a `Box<[u8; N]>`,
 /// it can be cloned and will be dropped if leaves the scope.
 ///
 /// # Examples
