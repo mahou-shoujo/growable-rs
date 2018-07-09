@@ -24,8 +24,7 @@ use std::ops;
 use std::ops::CoerceUnsized;
 use std::ptr;
 use std::ptr::NonNull;
-use alloc::alloc::Global;
-use alloc::allocator::{handle_alloc_error, Alloc, Excess, Layout};
+use alloc::alloc::{handle_alloc_error, Alloc, Excess, Global, Layout};
 
 /// A chunk of the heap memory that can be assigned with an arbitrary type.
 /// Until assigned with some data it behaves similarly to a `Box<[u8; N]>`,
