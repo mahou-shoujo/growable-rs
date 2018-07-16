@@ -3,8 +3,7 @@
  
 This crate provides a custom Box type with matching API that also allows to reuse the same
 heap to store different types with the minimal amount of allocations and is supposed to be
-used with a custom, pool-based allocator of user's choice such as
-[Lifeguard](https://crates.io/crates/lifeguard), but also can be used as a standalone solution.
+used with a pool-based allocator such as the one also provided by this crate.
 
 #### Notes
 This crate uses a lot of ground-breaking features of Rust and therefore
