@@ -1,6 +1,6 @@
 extern crate growable;
 
-use std::mem::size_of;
+use std::mem::{align_of, size_of};
 use growable::*;
 
 /// Some sample trait.
@@ -39,12 +39,12 @@ fn access() {
     assert_eq!(  v.len(), 6);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6]);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     let v: Reusable<[u8]> = buffer.consume([1u8, 2, 3, 4]);
     assert_eq!(  v.len(), 4);
     assert_eq!(&*v, &[1, 2, 3, 4]);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     let v: Reusable<[u8]> = buffer.consume([1u8, 2, 3, 4, 5, 6, 7, 8, 9]);
     assert_eq!(  v.len(), 9);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -60,10 +60,10 @@ fn access_as_trait() {
     let v: Reusable<Trait> = buffer.consume(StandardType(24));
     assert_eq!(v.get(), 24);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!( ! buffer.is_empty());
     assert_eq!(buffer.len(), size_of::<StandardType>());
-    assert_eq!(buffer.alignment(), 4);
+    assert_eq!(buffer.alignment(), align_of::<StandardType>());
     let v: Reusable<Trait> = buffer.consume(StandardType(48));
     assert_eq!(v.get(), 48);
 }
@@ -77,13 +77,13 @@ fn access_zst() {
     let v = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!(   buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!(   buffer.is_empty());
     assert_eq!(buffer.len(), 0);
 }
@@ -97,27 +97,43 @@ fn access_zst_as_trait() {
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!(   buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!(   buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!(   buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
-    let buffer = v.free();
+    let buffer = Reusable::free(v);
     assert!(   buffer.is_empty());
     assert_eq!(buffer.len(), 0);
+}
+
+#[test]
+fn free_move() {
+    struct Movable {
+        string: String,
+    }
+    let buffer = Growable::new();
+    let v = buffer.consume(Movable { string: String::from("Foo/Bar/Baz") });
+    let (
+        v,
+        buffer,
+    ) = Reusable::free_move(v);
+    assert_eq!(v.string.as_str(), "Foo/Bar/Baz");
+    assert_eq!(buffer.len(), size_of::<Movable>());
+    assert_eq!(buffer.alignment(), align_of::<Movable>());
 }
 
 #[test]
@@ -140,7 +156,7 @@ fn drop() {
         let buffer = Growable::new();
         let v = buffer.consume(Foo(Rc::clone(&drop_counter)));
         // Dropped manually:
-        v.free();
+        Reusable::free(v);
     }
     assert_eq!(drop_counter.get(), 2);
 }
@@ -200,4 +216,57 @@ fn clone_reusable() {
     let b = a.clone();
     assert_eq!(*a, 4);
     assert_eq!(*b, 4);
+}
+
+#[test]
+fn pool() {
+    let mut pool = GrowablePoolBuilder::default()
+        .with_default_capacity(128)
+        .with_default_ptr_alignment(16)
+        .with_capacity(2)
+        .enable_overgrow(true)
+        .build();
+    assert_eq!(pool.len(), 2);
+    let a = pool.allocate(1);
+    assert_eq!(pool.len(), 1);
+    let b = pool.allocate(2);
+    assert_eq!(pool.len(), 0);
+    pool.free(b);
+    assert_eq!(pool.len(), 1);
+    pool.free(a);
+    assert_eq!(pool.len(), 2);
+}
+
+#[test]
+fn pool_on_demand() {
+    let mut pool = GrowablePoolBuilder::default()
+        .with_default_capacity(128)
+        .with_default_ptr_alignment(16)
+        .with_capacity(0)
+        .enable_overgrow(false)
+        .build();
+    assert_eq!(pool.len(), 0);
+    let a = pool.allocate(1);
+    assert_eq!(pool.len(), 0);
+    let b = pool.allocate(2);
+    assert_eq!(pool.len(), 0);
+    pool.free(b);
+    assert_eq!(pool.len(), 0);
+    pool.free(a);
+    assert_eq!(pool.len(), 0);
+    let mut pool = GrowablePoolBuilder::default()
+        .with_default_capacity(128)
+        .with_default_ptr_alignment(16)
+        .with_capacity(0)
+        .enable_overgrow(true)
+        .build();
+    assert_eq!(pool.len(), 0);
+    let a = pool.allocate(1);
+    assert_eq!(pool.len(), 0);
+    let b = pool.allocate(2);
+    assert_eq!(pool.len(), 0);
+    pool.free(b);
+    assert_eq!(pool.len(), 1);
+    pool.free(a);
+    assert_eq!(pool.len(), 2);
 }
