@@ -344,6 +344,10 @@ pub struct Growable {
     ptr: NonNull<u8>,
 }
 
+unsafe impl Send for Growable {}
+
+unsafe impl Sync for Growable {}
+
 impl Clone for Growable {
 
     #[inline]
@@ -553,6 +557,14 @@ pub struct Reusable<T: ?Sized> {
     ptr_alignment: usize,
     ptr: NonNull<T>,
 }
+
+unsafe impl<T> Send for Reusable<T>
+    where
+        T: Send + ?Sized, {}
+
+unsafe impl<T> Sync for Reusable<T>
+    where
+        T: Sync + ?Sized, {}
 
 impl<T> Clone for Reusable<T>
     where
