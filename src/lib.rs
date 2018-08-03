@@ -12,10 +12,9 @@
 //! [`GrowablePool`]: struct.GrowablePool.html
 
 #![deny(missing_docs)]
-#![feature(allocator_api, alloc, coerce_unsized, unsize)]
+#![feature(allocator_api, coerce_unsized, unsize)]
 
-extern crate alloc;
-
+use std::alloc::{handle_alloc_error, Alloc, Excess, Global, Layout};
 use std::cmp;
 use std::collections::VecDeque;
 use std::fmt;
@@ -25,7 +24,6 @@ use std::ops;
 use std::ops::CoerceUnsized;
 use std::ptr;
 use std::ptr::NonNull;
-use alloc::alloc::{handle_alloc_error, Alloc, Excess, Global, Layout};
 
 /// A customizable [`GrowablePool`] builder.
 ///
