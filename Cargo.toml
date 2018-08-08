@@ -1,10 +1,11 @@
 [package]
 name = "growable"
 description = "A growable, reusable box for Rust."
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Eugene <mahou@shoujo.pw>"]
 license = "MIT"
 repository = "https://github.com/mahou-shoujo/growable-rs.git"
 homepage = "https://github.com/mahou-shoujo/growable-rs.git"
 readme = "README.md"
-documentation = "https://mahou-shoujo.github.io/growable-rs/growable/index.html"
+categories = ["data-structures", "memory-management", "rust-patterns"]
+keywords = ["allocation", "box", "memory", "pool", "reuse"]

@@ -1,7 +1,7 @@
 //! A growable, reusable box for Rust.
 //!
 //! This crate provides a custom Box type with matching API that also allows to reuse the same
-//! heap to store different types with the minimal amount of allocations and is supposed to be
+//! memory block to store different types with the minimal amount of allocations and is supposed to be
 //! used with a pool-based allocator such as [`GrowablePool`].
 //!
 //! # Notes
