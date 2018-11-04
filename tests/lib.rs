@@ -169,9 +169,19 @@ fn with_capacity() {
     assert_eq!(buffer.len(), 0);
     assert_eq!(buffer.alignment(), 1);
     // --
-    let buffer = Growable::with_capacity(1, 2);
+    let buffer = Growable::with_capacity(1, 1);
     assert!( ! buffer.is_empty());
     assert_eq!(buffer.len(), 1);
+    assert_eq!(buffer.alignment(), 1);
+    // --
+    let buffer = Growable::with_capacity(2, 1);
+    assert!( ! buffer.is_empty());
+    assert_eq!(buffer.len(), 2);
+    assert_eq!(buffer.alignment(), 1);
+    // --
+    let buffer = Growable::with_capacity(2, 2);
+    assert!( ! buffer.is_empty());
+    assert_eq!(buffer.len(), 2);
     assert_eq!(buffer.alignment(), 2);
 }
 

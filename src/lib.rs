@@ -430,7 +430,11 @@ impl Growable {
     /// 
     /// * `ptr_alignment` is not a power of two.
     /// * `len` overflows after being rounded up to the nearest multiple of the alignment.
-    /// 
+    ///
+    /// # Notes
+    ///
+    /// Might trigger `alloc_error` handler.
+    ///
     /// # Examples
     /// 
     /// ```
@@ -476,7 +480,7 @@ impl Growable {
     /// 
     /// # Notes
     /// 
-    /// Might trigger `oom()` handler.
+    /// Might trigger `alloc_error` handler.
     /// 
     /// # Examples
     /// 
