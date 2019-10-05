@@ -3,9 +3,8 @@
 extern crate growable;
 extern crate test;
 
-use std::collections::VecDeque;
-use std::fmt::Debug;
 use growable::{GrowablePoolBuilder, Reusable};
+use std::{collections::VecDeque, fmt::Debug};
 use test::Bencher;
 
 #[bench]

@@ -1,11 +1,10 @@
 extern crate growable;
 
-use std::mem::{align_of, size_of};
 use growable::*;
+use std::mem::{align_of, size_of};
 
 /// Some sample trait.
 trait Trait {
-
     fn get(&self) -> u32;
 }
 
@@ -14,7 +13,6 @@ trait Trait {
 struct StandardType(u32);
 
 impl Trait for StandardType {
-
     fn get(&self) -> u32 {
         self.0
     }
@@ -25,7 +23,6 @@ impl Trait for StandardType {
 struct ZST;
 
 impl Trait for ZST {
-
     fn get(&self) -> u32 {
         42
     }
@@ -36,17 +33,17 @@ fn access() {
     // --
     let buffer = Growable::new();
     let v: Reusable<[u8]> = buffer.consume([1u8, 2, 3, 4, 5, 6]);
-    assert_eq!(  v.len(), 6);
+    assert_eq!(v.len(), 6);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6]);
     // --
     let buffer = Reusable::free(v);
     let v: Reusable<[u8]> = buffer.consume([1u8, 2, 3, 4]);
-    assert_eq!(  v.len(), 4);
+    assert_eq!(v.len(), 4);
     assert_eq!(&*v, &[1, 2, 3, 4]);
     // --
     let buffer = Reusable::free(v);
     let v: Reusable<[u8]> = buffer.consume([1u8, 2, 3, 4, 5, 6, 7, 8, 9]);
-    assert_eq!(  v.len(), 9);
+    assert_eq!(v.len(), 9);
     assert_eq!(&*v, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
 }
 
@@ -54,14 +51,14 @@ fn access() {
 fn access_as_trait() {
     // --
     let buffer = Growable::new();
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     assert_eq!(buffer.alignment(), 1);
     let v: Reusable<Trait> = buffer.consume(StandardType(24));
     assert_eq!(v.get(), 24);
     // --
     let buffer = Reusable::free(v);
-    assert!( ! buffer.is_empty());
+    assert!(!buffer.is_empty());
     assert_eq!(buffer.len(), size_of::<StandardType>());
     assert_eq!(buffer.alignment(), align_of::<StandardType>());
     let v: Reusable<Trait> = buffer.consume(StandardType(48));
@@ -72,19 +69,19 @@ fn access_as_trait() {
 fn access_zst() {
     // --
     let buffer = Growable::new();
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
 }
 
@@ -92,31 +89,31 @@ fn access_zst() {
 fn access_zst_as_trait() {
     // --
     let buffer = Growable::new();
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     let v: Reusable<Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
 }
 
@@ -126,11 +123,10 @@ fn free_move() {
         string: String,
     }
     let buffer = Growable::new();
-    let v = buffer.consume(Movable { string: String::from("Foo/Bar/Baz") });
-    let (
-        v,
-        buffer,
-    ) = Reusable::free_move(v);
+    let v = buffer.consume(Movable {
+        string: String::from("Foo/Bar/Baz"),
+    });
+    let (v, buffer) = Reusable::free_move(v);
     assert_eq!(v.string.as_str(), "Foo/Bar/Baz");
     assert_eq!(buffer.len(), size_of::<Movable>());
     assert_eq!(buffer.alignment(), align_of::<Movable>());
@@ -139,14 +135,15 @@ fn free_move() {
 #[test]
 fn drop() {
     // --
-    use std::cell::Cell;
-    use std::rc::Rc;
+    use std::{cell::Cell, rc::Rc};
     // --
     let drop_counter = Rc::new(Cell::new(0));
     // --
     struct Foo(Rc<Cell<usize>>);
     impl Drop for Foo {
-        fn drop(&mut self) { self.0.set(self.0.get() + 1); }
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
     }
     // --
     {
@@ -165,22 +162,22 @@ fn drop() {
 fn with_capacity() {
     // --
     let buffer = Growable::with_capacity(0, 1);
-    assert!(   buffer.is_empty());
+    assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     assert_eq!(buffer.alignment(), 1);
     // --
     let buffer = Growable::with_capacity(1, 1);
-    assert!( ! buffer.is_empty());
+    assert!(!buffer.is_empty());
     assert_eq!(buffer.len(), 1);
     assert_eq!(buffer.alignment(), 1);
     // --
     let buffer = Growable::with_capacity(2, 1);
-    assert!( ! buffer.is_empty());
+    assert!(!buffer.is_empty());
     assert_eq!(buffer.len(), 2);
     assert_eq!(buffer.alignment(), 1);
     // --
     let buffer = Growable::with_capacity(2, 2);
-    assert!( ! buffer.is_empty());
+    assert!(!buffer.is_empty());
     assert_eq!(buffer.len(), 2);
     assert_eq!(buffer.alignment(), 2);
 }
