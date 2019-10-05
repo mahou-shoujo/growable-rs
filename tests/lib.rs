@@ -1,5 +1,3 @@
-extern crate growable;
-
 use growable::*;
 use std::mem::{align_of, size_of};
 
@@ -54,14 +52,14 @@ fn access_as_trait() {
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
     assert_eq!(buffer.alignment(), 1);
-    let v: Reusable<Trait> = buffer.consume(StandardType(24));
+    let v: Reusable<dyn Trait> = buffer.consume(StandardType(24));
     assert_eq!(v.get(), 24);
     // --
     let buffer = Reusable::free(v);
     assert!(!buffer.is_empty());
     assert_eq!(buffer.len(), size_of::<StandardType>());
     assert_eq!(buffer.alignment(), align_of::<StandardType>());
-    let v: Reusable<Trait> = buffer.consume(StandardType(48));
+    let v: Reusable<dyn Trait> = buffer.consume(StandardType(48));
     assert_eq!(v.get(), 48);
 }
 
@@ -91,25 +89,25 @@ fn access_zst_as_trait() {
     let buffer = Growable::new();
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(ZST);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
