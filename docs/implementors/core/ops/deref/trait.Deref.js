@@ -6,5 +6,4 @@ implementors["growable"] = [{text:"impl&lt;T:&nbsp;?<a class=\"trait\" href=\"ht
             } else {
                 window.pending_implementors = implementors;
             }
-        
-})()
+        })()
