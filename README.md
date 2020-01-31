@@ -1,5 +1,5 @@
 ﻿## A growable, reusable box for Rust.
- [![](https://travis-ci.org/mahou-shoujo/growable-rs.svg)](https://travis-ci.org/mahou-shoujo/growable-rs)
+[![Build Status](https://travis-ci.com/mahou-shoujo/growable-rs.svg?branch=master)](https://travis-ci.com/mahou-shoujo/growable-rs)
  
 This crate provides a custom Box type with matching API that also allows to reuse the same
 memory block to store different types with the minimal amount of allocations and is supposed to be
