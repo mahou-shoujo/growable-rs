@@ -6,5 +6,9 @@ memory block to store different types with the minimal amount of allocations and
 used with a pool-based allocator (such as the one provided by this crate).
 
 #### Notes
-This crate uses a lot of ground-breaking features of Rust and therefore
-is only available on the latest Nightly build.
+The implementation depends on some unstable features:
+*) [`allocator-api`](https://doc.rust-lang.org/unstable-book/library-features/allocator-api.html)
+*) [`unsize`](https://doc.rust-lang.org/unstable-book/library-features/unsize.html)
+*) [`coerce-unsized`](https://doc.rust-lang.org/unstable-book/library-features/coerce-unsized.html)
+Things can break randomly and the minimal supported version of rustc will be shifted accordingly.
+Right now it is `rustc 1.43.0-nightly (433aae93e 2020-02-14)`.
