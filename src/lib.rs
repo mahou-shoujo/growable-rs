@@ -15,7 +15,7 @@
 #![feature(allocator_api, coerce_unsized, unsize)]
 
 use std::{
-    alloc::{handle_alloc_error, Alloc, Excess, Global, Layout},
+    alloc::{handle_alloc_error, AllocRef, Excess, Global, Layout},
     cmp,
     collections::VecDeque,
     fmt,
