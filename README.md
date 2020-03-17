@@ -12,4 +12,4 @@ The implementation depends on some unstable features:
 3. [`coerce-unsized`](https://doc.rust-lang.org/unstable-book/library-features/coerce-unsized.html)
 
 Things can break randomly and the minimal supported version of rustc will be shifted accordingly.
-Right now it is `rustc 1.43.0-nightly (433aae93e 2020-02-14)`.
+Right now it is `rustc 1.43.0-nightly (c20d7eecb 2020-03-11)`.
