@@ -15,7 +15,7 @@
 #![feature(allocator_api, coerce_unsized, unsize)]
 
 use std::{
-    alloc::{handle_alloc_error, AllocRef, Global, Layout},
+    alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, MemoryBlock, ReallocPlacement},
     cmp,
     collections::VecDeque,
     fmt,
@@ -438,12 +438,18 @@ impl Growable {
     /// [`Growable`]: struct.Growable.html
     #[inline]
     pub fn with_capacity(len: usize, ptr_alignment: usize) -> Self {
-        let (ptr, len) = if len != 0 {
+        let MemoryBlock {
+            ptr,
+            size: len,
+        } = if len != 0 {
             let layout = Layout::from_size_align(len, ptr_alignment).expect("Growable::with_capacity: invalid layout");
-            Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout))
+            Global.alloc(layout, AllocInit::Uninitialized).unwrap_or_else(|_| handle_alloc_error(layout))
         } else {
             assert!(ptr_alignment.is_power_of_two(), "Growable::with_capacity: alignment must be a power of two");
-            (NonNull::<u8>::dangling(), 0)
+            MemoryBlock {
+                ptr: NonNull::<u8>::dangling(),
+                size: 0,
+            }
         };
         Growable {
             len,
@@ -507,24 +513,25 @@ impl Growable {
 
         let len = cmp::max(self.len, len);
         // NB: Could be a bug if there is a way to define a ZST with align_of() greater than one?!
-        debug_assert_ne!(len, 0, "Growable::grow: realloc to zero");
+        assert_ne!(len, 0, "Growable::grow: realloc to zero");
         unsafe {
             let layout_curr = Layout::from_size_align_unchecked(self.len, self.ptr_alignment);
             let layout = Layout::from_size_align_unchecked(len, ptr_alignment);
             // If the alignment is the same we can try to grow in place.
-            let growed_in_place =
-                layout.align() == layout_curr.align() && Global.grow_in_place(self.ptr, layout_curr, len).is_ok();
-            if !growed_in_place {
-                // Oops, a reallocation is required.
-                let (ptr, len) =
-                    Global.realloc(self.ptr, layout_curr, len).unwrap_or_else(|_| handle_alloc_error(layout));
-                self.len = len;
-                self.ptr_alignment = ptr_alignment;
-                self.ptr = ptr;
+            let MemoryBlock {
+                ptr,
+                size: len,
+            } = if layout.align() == layout_curr.align() {
+                Global.grow(self.ptr, layout_curr, len, ReallocPlacement::MayMove, AllocInit::Uninitialized)
             } else {
-                // On successful grow_in_place we only need to update len.
-                self.len = len;
+                // Oops, a reallocation is required.
+                Global.dealloc(self.ptr, layout_curr);
+                Global.alloc(layout, AllocInit::Uninitialized)
             }
+            .unwrap_or_else(|_| handle_alloc_error(layout));
+            self.len = len;
+            self.ptr_alignment = ptr_alignment;
+            self.ptr = ptr;
         }
     }
 
