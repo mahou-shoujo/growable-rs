@@ -116,6 +116,21 @@ fn access_zst_as_trait() {
 }
 
 #[test]
+fn realloc_with_alignment_change() {
+    struct Align4(u32);
+    struct Align8(u64);
+    let buffer = Growable::new();
+    let a4 = buffer.consume(Align4(0));
+    let buffer = Reusable::free(a4);
+    assert_eq!(buffer.len(), size_of::<Align4>());
+    assert_eq!(buffer.alignment(), align_of::<Align4>());
+    let a8 = buffer.consume(Align8(0));
+    let buffer = Reusable::free(a8);
+    assert_eq!(buffer.len(), size_of::<Align8>());
+    assert_eq!(buffer.alignment(), align_of::<Align8>());
+}
+
+#[test]
 fn free_move() {
     struct Movable {
         string: String,
