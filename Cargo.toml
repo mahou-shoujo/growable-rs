@@ -1,7 +1,7 @@
 [package]
 name = "growable"
 description = "A growable, reusable box for Rust."
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Eugene Palmoff <mahou@shoujo.pw>"]
 license = "MIT"
 edition = "2018"
