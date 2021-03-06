@@ -12,10 +12,10 @@
 //! [`GrowablePool`]: struct.GrowablePool.html
 
 #![deny(missing_docs)]
-#![feature(allocator_api, coerce_unsized, unsize)]
+#![feature(allocator_api, coerce_unsized, slice_ptr_get, unsize)]
 
 use std::{
-    alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, MemoryBlock, ReallocPlacement},
+    alloc::{handle_alloc_error, Allocator, Global, Layout},
     cmp,
     collections::VecDeque,
     fmt,
@@ -374,7 +374,7 @@ impl Drop for Growable {
     fn drop(&mut self) {
         if self.len != 0 {
             unsafe {
-                Global.dealloc(self.ptr, Layout::from_size_align_unchecked(self.len, self.ptr_alignment));
+                Global.deallocate(self.ptr, Layout::from_size_align_unchecked(self.len, self.ptr_alignment));
             }
         }
     }
@@ -438,18 +438,12 @@ impl Growable {
     /// [`Growable`]: struct.Growable.html
     #[inline]
     pub fn with_capacity(len: usize, ptr_alignment: usize) -> Self {
-        let MemoryBlock {
-            ptr,
-            size: len,
-        } = if len != 0 {
+        let ptr = if len != 0 {
             let layout = Layout::from_size_align(len, ptr_alignment).expect("Growable::with_capacity: invalid layout");
-            Global.alloc(layout, AllocInit::Uninitialized).unwrap_or_else(|_| handle_alloc_error(layout))
+            Global.allocate(layout).map_or_else(|_| handle_alloc_error(layout), |ptr| ptr.as_non_null_ptr())
         } else {
             assert!(ptr_alignment.is_power_of_two(), "Growable::with_capacity: alignment must be a power of two");
-            MemoryBlock {
-                ptr: NonNull::<u8>::dangling(),
-                size: 0,
-            }
+            NonNull::<u8>::dangling()
         };
         Growable {
             len,
@@ -518,17 +512,14 @@ impl Growable {
             let layout_curr = Layout::from_size_align_unchecked(self.len, self.ptr_alignment);
             let layout = Layout::from_size_align_unchecked(len, ptr_alignment);
             // If the alignment is the same we can try to grow in place.
-            let MemoryBlock {
-                ptr,
-                size: len,
-            } = if layout.align() == layout_curr.align() {
-                Global.grow(self.ptr, layout_curr, len, ReallocPlacement::MayMove, AllocInit::Uninitialized)
+            let ptr = if layout.align() == layout_curr.align() {
+                Global.grow(self.ptr, layout_curr, layout)
             } else {
                 // Oops, a reallocation is required.
-                Global.dealloc(self.ptr, layout_curr);
-                Global.alloc(layout, AllocInit::Uninitialized)
+                Global.deallocate(self.ptr, layout_curr);
+                Global.allocate(layout)
             }
-            .unwrap_or_else(|_| handle_alloc_error(layout));
+            .map_or_else(|_| handle_alloc_error(layout), |ptr| ptr.as_non_null_ptr());
             self.len = len;
             self.ptr_alignment = ptr_alignment;
             self.ptr = ptr;
