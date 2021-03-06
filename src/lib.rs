@@ -11,7 +11,7 @@
 //!
 //! [`GrowablePool`]: struct.GrowablePool.html
 
-#![deny(missing_docs)]
+#![deny(missing_docs, missing_debug_implementations)]
 #![feature(allocator_api, coerce_unsized, slice_ptr_get, unsize)]
 
 use std::{
