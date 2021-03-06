@@ -10,6 +10,7 @@ The implementation depends on some unstable features:
 1. [`allocator-api`](https://doc.rust-lang.org/unstable-book/library-features/allocator-api.html)
 2. [`unsize`](https://doc.rust-lang.org/unstable-book/library-features/unsize.html)
 3. [`coerce-unsized`](https://doc.rust-lang.org/unstable-book/library-features/coerce-unsized.html)
+4. [`slice_ptr_get`](https://doc.rust-lang.org/unstable-book/library-features/slice-ptr-get.html)
 
 Things can break randomly and the minimal supported version of rustc will be shifted accordingly.
 Right now it is `rustc 1.52.0-nightly (caca2121f 2021-03-05)`.
