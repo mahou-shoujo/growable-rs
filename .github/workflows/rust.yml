@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Setup env
       run: |
-        rustup toolchain install nightly-2023-10-22 --component miri
+        rustup toolchain install nightly-2023-10-22 --component clippy --component miri
         rustup override set nightly-2023-10-22
         cargo miri setup
     - name: Run clippy
