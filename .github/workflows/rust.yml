@@ -1,0 +1,26 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  # Make sure CI fails on all warnings, including Clippy lints
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup env
+      run: |
+        rustup toolchain install nightly-2023-10-22 --component clippy --component miri
+        rustup override set nightly-2023-10-22
+        cargo miri setup
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features
+    - name: Run miri tests
+      run: cargo miri test --all-targets --all-features
