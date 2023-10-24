@@ -105,7 +105,8 @@ impl GrowablePoolBuilder {
     /// [`GrowablePool`]: struct.GrowablePool.html
     pub fn build(&self) -> GrowablePool {
         let vec = {
-            let default = Growable::with_capacity(self.per_growable_len, self.per_growable_ptr_alignment);
+            let default =
+                Growable::with_capacity(self.per_growable_len, self.per_growable_ptr_alignment);
             let mut vec = VecDeque::with_capacity(self.len);
             vec.resize(self.len, default);
             vec
@@ -254,7 +255,8 @@ impl GrowablePool {
         match self.vec.pop_front() {
             Some(growable) => growable.consume(t),
             None => {
-                let default = Growable::with_capacity(self.per_growable_len, self.per_growable_ptr_alignment);
+                let default =
+                    Growable::with_capacity(self.per_growable_len, self.per_growable_ptr_alignment);
                 self.vec.resize(cmp::max(self.len, 1), default);
                 self.allocate(t)
             },
@@ -374,7 +376,10 @@ impl Drop for Growable {
     fn drop(&mut self) {
         if self.len != 0 {
             unsafe {
-                Global.deallocate(self.ptr, Layout::from_size_align_unchecked(self.len, self.ptr_alignment));
+                Global.deallocate(
+                    self.ptr,
+                    Layout::from_size_align_unchecked(self.len, self.ptr_alignment),
+                );
             }
         }
     }
@@ -439,10 +444,16 @@ impl Growable {
     #[inline]
     pub fn with_capacity(len: usize, ptr_alignment: usize) -> Self {
         let ptr = if len != 0 {
-            let layout = Layout::from_size_align(len, ptr_alignment).expect("Growable::with_capacity: invalid layout");
-            Global.allocate(layout).map_or_else(|_| handle_alloc_error(layout), |ptr| ptr.as_non_null_ptr())
+            let layout = Layout::from_size_align(len, ptr_alignment)
+                .expect("Growable::with_capacity: invalid layout");
+            Global
+                .allocate(layout)
+                .map_or_else(|_| handle_alloc_error(layout), |ptr| ptr.as_non_null_ptr())
         } else {
-            assert!(ptr_alignment.is_power_of_two(), "Growable::with_capacity: alignment must be a power of two");
+            assert!(
+                ptr_alignment.is_power_of_two(),
+                "Growable::with_capacity: alignment must be a power of two"
+            );
             NonNull::<u8>::dangling()
         };
         Growable {
