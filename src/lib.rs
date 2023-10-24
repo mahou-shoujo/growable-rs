@@ -564,7 +564,7 @@ where
 {
     fn clone(&self) -> Self {
         let growable = Growable::with_capacity_for_type::<T>();
-        growable.consume(T::clone(&*self))
+        growable.consume(T::clone(self))
     }
 }
 
@@ -596,7 +596,7 @@ where
     T: ?Sized + fmt::Debug,
 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let t: &T = &*self;
+        let t: &T = self;
         fmt::Debug::fmt(t, formatter)
     }
 }

@@ -18,9 +18,9 @@ impl Trait for StandardType {
 
 /// Zero-sized trait implementor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ZST;
+struct Zst;
 
-impl Trait for ZST {
+impl Trait for Zst {
     fn get(&self) -> u32 {
         42
     }
@@ -69,13 +69,13 @@ fn access_zst() {
     let buffer = Growable::new();
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v = buffer.consume(ZST);
+    let v = buffer.consume(Zst);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v = buffer.consume(ZST);
+    let v = buffer.consume(Zst);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
@@ -89,25 +89,25 @@ fn access_zst_as_trait() {
     let buffer = Growable::new();
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<dyn Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(Zst);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<dyn Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(Zst);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<dyn Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(Zst);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
     assert!(buffer.is_empty());
     assert_eq!(buffer.len(), 0);
-    let v: Reusable<dyn Trait> = buffer.consume(ZST);
+    let v: Reusable<dyn Trait> = buffer.consume(Zst);
     assert_eq!(v.get(), 42);
     // --
     let buffer = Reusable::free(v);
